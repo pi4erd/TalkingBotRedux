@@ -4,16 +4,27 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TalkingBot.Modules;
 
 namespace TalkingBot.Core;
 
 public class TalkingBotClient : IHostedService
 {
+    public static string CurrentVersion;
+
     private readonly DiscordSocketClient _discordSocketClient;
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly TalkingBotConfig _config;
     private readonly ILogger<TalkingBotClient> _logger;
+
+    static TalkingBotClient() {
+        CurrentVersion = Assembly
+            .GetEntryAssembly()?
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ??
+            "unknown";
+    }
 
     public TalkingBotClient(
         DiscordSocketClient discordSocketClient,
@@ -38,6 +49,7 @@ public class TalkingBotClient : IHostedService
         _discordSocketClient.InteractionCreated += InteractionCreated;
         _discordSocketClient.Ready += Ready;
         _interactionService.InteractionExecuted += InteractionExecuted;
+        _discordSocketClient.Log += Log;
 
         await _discordSocketClient
             .LoginAsync(Discord.TokenType.Bot, _config.Token)
@@ -52,6 +64,7 @@ public class TalkingBotClient : IHostedService
     {
         _discordSocketClient.InteractionCreated -= InteractionCreated;
         _discordSocketClient.Ready -= Ready;
+        _discordSocketClient.Log -= Log;
 
         await _discordSocketClient
             .StopAsync()
@@ -59,8 +72,7 @@ public class TalkingBotClient : IHostedService
     }
 
     public async Task Ready() {
-        await SetupInteractions()
-            .ConfigureAwait(false);
+        await SetupInteractions();
         
         _logger.LogInformation("Client {0} is ready!", _discordSocketClient);
     }
@@ -72,9 +84,8 @@ public class TalkingBotClient : IHostedService
     }
 
     private async Task SetupInteractions() {
-        await _interactionService
-            .AddModulesAsync(Assembly.GetExecutingAssembly(), _serviceProvider)
-            .ConfigureAwait(false);
+        await _interactionService.AddModuleAsync<AudioModule>(_serviceProvider);
+        await _interactionService.AddModuleAsync<GeneralModule>(_serviceProvider);
         
         foreach(var guildId in _config.Guilds) {
             var guild = _discordSocketClient.GetGuild(guildId);
@@ -84,11 +95,28 @@ public class TalkingBotClient : IHostedService
                 continue;
             }
 
-            await _interactionService.RegisterCommandsToGuildAsync(guildId);
+            await _interactionService.RegisterCommandsToGuildAsync(guildId, true);
 
-            _logger.LogInformation("Built commands for guild {0}.", guild.Name);
-
+            _logger.LogDebug("Built commands for guild {0}.", guild.Name);
         }
+
+        _logger.LogInformation($"Built commands for {_config.Guilds.Length} guilds.");
+    }
+
+    public Task Log(LogMessage message) {
+        LogLevel level = message.Severity switch {
+            LogSeverity.Info => LogLevel.Information,
+            LogSeverity.Debug => LogLevel.Debug,
+            LogSeverity.Error => LogLevel.Error,
+            LogSeverity.Critical => LogLevel.Critical,
+            LogSeverity.Warning => LogLevel.Warning,
+            LogSeverity.Verbose => LogLevel.Trace,
+            _ => LogLevel.None
+        };
+
+        _logger.Log(level, message: message.Message, exception: message.Exception);
+        
+        return Task.CompletedTask;
     }
 
     public Task InteractionCreated(SocketInteraction interaction) {
