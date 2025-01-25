@@ -7,37 +7,64 @@ using TalkingBot.Core;
 using Microsoft.Extensions.Logging;
 using Discord.Rest;
 
-namespace TalkingBot;
+HostApplicationBuilder builder = new(args);
 
-class Program {
-    static void Main(string[] args) {
-        HostApplicationBuilder builder = new(args);
+string? configFilename = null;
 
-        TalkingBotConfig? botConfig = TalkingBotConfig.Read("Config.json");
+for (int i = 0; i < args.Length; i++)
+{
+    var arg = args[i];
 
-        if(botConfig is null) {
-            new TalkingBotConfig([]).Write("Config.json");
-            throw new FileNotFoundException("Config.json wasn't found. Created default.");
-        }
+    switch (arg)
+    {
+        case "-C":
+            string? filename = args.GetValue(++i) as string;
 
-        builder.Services.AddSingleton(botConfig);
-        builder.Services.AddSingleton<DiscordSocketClient>();
-        builder.Services.AddSingleton<InteractionService>();
-        builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordSocketClient>());
-        builder.Services.AddHostedService<TalkingBotClient>();
+            if (filename is null)
+            {
+                Console.WriteLine("No filename provided for '-C'.");
+                Environment.Exit(1);
+            }
 
-        builder.Services.AddLavalink();
-        // TODO: Add custom config with log-level select
-        builder.Services.AddLogging(x => x.AddConsole().SetMinimumLevel(botConfig.LogLevel));
-        builder.Services.ConfigureLavalink(config => {
-            config.BaseAddress = new Uri(botConfig.LavalinkHost);
-            config.Passphrase = botConfig.LavalinkPassword;
-        });
-
-        try {
-            builder.Build().Run();
-        } catch(Exception e) {
-            Console.WriteLine("\n-----------------\nError while running application: {0}", e);
-        }
+            configFilename = filename;
+            break;
+        default:
+            break;
     }
+}
+
+// NOTE: This might not be the best way to put in config
+// but cut me some slack, it works.
+TalkingBotConfig? botConfig = TalkingBotConfig.Read(configFilename ?? "Config.json");
+
+Console.WriteLine("Selected {0} as config.", configFilename ?? "Config.json");
+
+if (botConfig is null)
+{
+    new TalkingBotConfig([]).Write(configFilename ?? "Config.json");
+    throw new FileNotFoundException("Config.json wasn't found. Created default.");
+}
+
+builder.Services.AddSingleton(botConfig);
+builder.Services.AddSingleton<DiscordSocketClient>();
+builder.Services.AddSingleton<InteractionService>();
+builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordSocketClient>());
+builder.Services.AddHostedService<TalkingBotClient>();
+
+builder.Services.AddLavalink();
+// TODO: Add custom config with log-level select
+builder.Services.AddLogging(x => x.AddConsole().SetMinimumLevel(botConfig.LogLevel));
+builder.Services.ConfigureLavalink(config =>
+{
+    config.BaseAddress = new Uri(botConfig.LavalinkHost);
+    config.Passphrase = botConfig.LavalinkPassword;
+});
+
+try
+{
+    builder.Build().Run();
+}
+catch (Exception e)
+{
+    Console.WriteLine("\n-----------------\nError while running application: {0}", e);
 }
