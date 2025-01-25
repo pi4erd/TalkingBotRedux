@@ -10,11 +10,13 @@ public class TalkingBotClient : IHostedService
     private readonly DiscordSocketClient _discordSocketClient;
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly TalkingBotConfig _config;
 
     public TalkingBotClient(
         DiscordSocketClient discordSocketClient,
         InteractionService interactionService,
-        IServiceProvider serviceProvider
+        IServiceProvider serviceProvider,
+        TalkingBotConfig config
     ) {
         ArgumentNullException.ThrowIfNull(discordSocketClient);
         ArgumentNullException.ThrowIfNull(interactionService);
@@ -23,6 +25,7 @@ public class TalkingBotClient : IHostedService
         _discordSocketClient = discordSocketClient;
         _interactionService = interactionService;
         _serviceProvider = serviceProvider;
+        _config = config;
     }
     
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -31,7 +34,7 @@ public class TalkingBotClient : IHostedService
         _discordSocketClient.Ready += Ready;
 
         await _discordSocketClient
-            .LoginAsync(Discord.TokenType.Bot, "")
+            .LoginAsync(Discord.TokenType.Bot, _config.Token)
             .ConfigureAwait(false);
 
         await _discordSocketClient
