@@ -78,15 +78,23 @@ public class TalkingBotClient : IHostedService
         _logger.LogInformation("Client {} is ready!", _discordSocketClient);
     }
 
-    private Task InteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result) {
+    private async Task InteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result) {
         _logger.LogDebug("@{} executed command '{}'.", context.User.Username, command.Name);
 
-        return Task.CompletedTask;
+        if(!result.IsSuccess) {
+            _logger.LogWarning("Error occured while executing interaction: {}.\n{}", result.Error, result.ErrorReason);
+
+            await context.Interaction.GetOriginalResponseAsync()
+                .ContinueWith(msg => msg.Result.DeleteAsync());
+
+            await context.Interaction.FollowupAsync("Failed to execute interaction!", ephemeral: true);
+        }
     }
 
     private async Task SetupInteractions() {
         await _interactionService.AddModuleAsync<AudioModule>(_serviceProvider);
         await _interactionService.AddModuleAsync<GeneralModule>(_serviceProvider);
+        await _interactionService.AddModuleAsync<ButtonModule>(_serviceProvider);
         
         foreach(var guildId in _config.Guilds) {
             var guild = _discordSocketClient.GetGuild(guildId);
@@ -123,6 +131,14 @@ public class TalkingBotClient : IHostedService
     }
 
     public Task InteractionCreated(SocketInteraction interaction) {
+        if(interaction is SocketMessageComponent component) {
+            var componentContext = new SocketInteractionContext<SocketMessageComponent>(
+                _discordSocketClient,
+                component
+            );
+            return _interactionService.ExecuteCommandAsync(componentContext, _serviceProvider);
+        }
+
         var interactionContext = new SocketInteractionContext(_discordSocketClient, interaction);
         return _interactionService.ExecuteCommandAsync(interactionContext, _serviceProvider);
     }

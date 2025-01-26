@@ -1,9 +1,12 @@
+using Discord;
 using Discord.Interactions;
 using TalkingBot.Core;
+using TalkingBot.Core.Caching;
+using TalkingBot.Services;
 
 namespace TalkingBot.Modules;
 
-public class GeneralModule : InteractionModuleBase {
+public class GeneralModule(MessageCacher cacher) : InteractionModuleBase {
     [SlashCommand("ping", "Pings-Pongs. Used to test if bot is working.", runMode: RunMode.Async)]
     public async Task Ping() {
         await RespondAsync("Pong!").ConfigureAwait(false);
@@ -30,5 +33,42 @@ public class GeneralModule : InteractionModuleBase {
         } else {
             await RespondAsync($"{Context.User.Mention} rolled **{number}**/**{limit}**.");
         }
+    }
+
+    [DefaultMemberPermissions(GuildPermission.Administrator)] // don't wanna risk it y'know
+    [SlashCommand("rolemsg", "Creates 'get role' button on a target message.", runMode: RunMode.Async)]
+    public async Task RoleMsg(
+        [Summary("messageId", "ID of a message to attach to")] string messageIdStr,
+        [Summary("role", "Role to give on button click")] IRole role
+    ) {
+        await DeferAsync(true).ConfigureAwait(false);
+
+        var button = new ButtonBuilder()
+            .WithLabel("Get role")
+            .WithCustomId("add-role")
+            .WithStyle(ButtonStyle.Primary);
+        
+        ulong messageId = ulong.Parse(messageIdStr); // Workaround for discord limitation on integer size
+        var message = await Context.Channel.GetMessageAsync(messageId);
+
+        if(message is not null) {
+            var components = ComponentBuilder.FromMessage(message)
+                .WithButton(button)
+                .Build();
+            
+            var botMessage = await Context.Channel.SendMessageAsync(message.Content, components: components);
+
+            cacher.AddMessage(new RoleMessageCache() {
+                MessageId = botMessage.Id,
+                RoleId = role.Id
+            });
+
+            await message.DeleteAsync();
+            await FollowupAsync("Deleted old message and created a new message successfully.", ephemeral: true);
+            
+            return;
+        }
+
+        await FollowupAsync("Failed to add component as message wasn't found in current channel.", ephemeral: true);
     }
 }
