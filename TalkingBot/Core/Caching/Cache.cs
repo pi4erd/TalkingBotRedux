@@ -1,4 +1,3 @@
-using Discord;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 

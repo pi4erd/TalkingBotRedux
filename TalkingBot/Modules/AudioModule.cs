@@ -12,14 +12,15 @@ public class AudioModule(
     IAudioService audioService
 ) : InteractionModuleBase {
     static class Messages {
-        public const string NOT_CONNECTED = "You are not connected to voice channel!";
+        public const string USER_NOT_CONNECTED = "You are not connected to voice channel!";
+        public const string BOT_NOT_CONNECTED = "I am not connected!";
         public const string NOT_PLAYING = "Not playing anything!";
     }
 
     [SlashCommand("join", "Joins voice channel.", runMode: RunMode.Async)]
     public async Task Join() {
         if(Context.User is not IVoiceState voiceState) {
-            await RespondAsync(Messages.NOT_CONNECTED, ephemeral: true)
+            await RespondAsync(Messages.USER_NOT_CONNECTED, ephemeral: true)
                 .ConfigureAwait(false);
             return;
         }
@@ -215,9 +216,156 @@ public class AudioModule(
         await FollowupAsync($"Skipped track [**{previousTrack.Title}**]({previousTrack.Uri}).", embeds: [embed]);
     }
 
+    [SlashCommand("seek", "Changes the position of a currently playing track.", runMode: RunMode.Async)]
+    public async Task Seek(
+        [Summary("timecode", "A time code to seek to. Format `HH:mm:ss`")] string timecode
+    ) {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        if(player.CurrentTrack is null) {
+            await FollowupAsync(Messages.NOT_PLAYING);
+            return;
+        }
+
+        if(!TimeSpan.TryParse(timecode, null, out TimeSpan timeSpan)) {
+            await FollowupAsync("Failed to parse timecode! Format has to be: `HH:mm:ss`", ephemeral: true)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        await player.SeekAsync(timeSpan);
+        await FollowupAsync($"Changed song position to {timeSpan}.");
+    }
+
+    [SlashCommand("pause", "Pauses currently playing track.", runMode: RunMode.Async)]
+    public async Task Pause() {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        if(player.CurrentTrack is null) {
+            await FollowupAsync(Messages.NOT_PLAYING);
+            return;
+        }
+
+        if(player.State.HasFlag(PlayerState.Paused)) {
+            await FollowupAsync("Already paused.", ephemeral: true);
+            return;
+        }
+
+        await player.PauseAsync();
+        await FollowupAsync($"Paused track at {player.Position!.Value.Position}")
+            .ConfigureAwait(false);
+    }
+
+    [SlashCommand("resume", "Resumes paused track.", runMode: RunMode.Async)]
+    public async Task Resume() {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        if(player.State.HasFlag(PlayerState.Playing) && !player.State.HasFlag(PlayerState.Paused)) {
+            await FollowupAsync("Already playing.", ephemeral: true);
+            return;
+        }
+
+        await player.ResumeAsync();
+        await FollowupAsync($"Resumed track.")
+            .ConfigureAwait(false);
+    }
+
+    [SlashCommand("leave", "Makes bot leave a voice chat.", runMode: RunMode.Async)]
+    public async Task Leave() {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        await player.DisconnectAsync().ConfigureAwait(false);
+        await FollowupAsync("Left voice chat.");
+    }
+
+    [SlashCommand("remove", "Removes song from queue.", runMode: RunMode.Async)]
+    public async Task Remove(
+        [Summary("songId", "Position of song in a queue. `0` skips current song.")] int songId
+    ) {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        if(player.CurrentTrack is null) {
+            await FollowupAsync(Messages.NOT_PLAYING);
+            return;
+        }
+
+        if(songId < 0) {
+            await FollowupAsync("Invalid ID. Only positive numbers and 0 are allowed.");
+            return;
+        }
+
+        if(songId == 0) {
+            await Skip();
+            return;
+        }
+
+        int index = songId - 1;
+        if(index >= player.Queue.Count) {
+            await FollowupAsync($"ID {songId} is outside of queue! " + 
+                "Type `/queue` to find out what number a song has.");
+            return;
+        }
+
+        var track = player.Queue[index].Track;
+
+        if(track is null) {
+            await FollowupAsync("Something went wrong. Try again later.", ephemeral: true);
+            return;
+        }
+
+        await player.Queue.RemoveAtAsync(index);
+        await FollowupAsync($"Removed [**{track.Title}**]({track.Uri})");
+    }
+
+    // TODO: Figure out looping
+    public async Task SetLoop(
+        [Summary("loops", "Number of times to loop. `-1` for endless.")] int loops=-1
+    ) {
+        await DeferAsync().ConfigureAwait(false);
+
+        var player = await GetPlayerAsync(false).ConfigureAwait(false);
+
+        if(player is null) {
+            return;
+        }
+
+        throw new NotImplementedException("Biggest problem would be tracking" + 
+            " next song, because there is no explicit API to loop in the library.");
+    }
+
     private async Task<QueuedLavalinkPlayer?> GetPlayerAsync(bool connectToVoice = true) {
         if(Context.User is not IVoiceState voiceState) {
-            await FollowupAsync(Messages.NOT_CONNECTED).ConfigureAwait(false);
+            await FollowupAsync(Messages.USER_NOT_CONNECTED).ConfigureAwait(false);
             return null;
         }
 
@@ -236,8 +384,8 @@ public class AudioModule(
         
         if(!result.IsSuccess) {
             var error = result.Status switch {
-                PlayerRetrieveStatus.UserNotInVoiceChannel => Messages.NOT_CONNECTED,
-                PlayerRetrieveStatus.BotNotConnected => "I am not connected!",
+                PlayerRetrieveStatus.UserNotInVoiceChannel => Messages.USER_NOT_CONNECTED,
+                PlayerRetrieveStatus.BotNotConnected => Messages.BOT_NOT_CONNECTED,
                 _ => "Unknown error."
             };
 

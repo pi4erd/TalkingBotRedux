@@ -10,7 +10,7 @@ namespace TalkingBot.Core;
 
 public class TalkingBotClient : IHostedService
 {
-    public static string CurrentVersion;
+    public static string CurrentVersion { get; private set; }
 
     private readonly DiscordSocketClient _discordSocketClient;
     private readonly InteractionService _interactionService;
@@ -63,6 +63,7 @@ public class TalkingBotClient : IHostedService
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         _discordSocketClient.InteractionCreated -= InteractionCreated;
+        _interactionService.InteractionExecuted -= InteractionExecuted;
         _discordSocketClient.Ready -= Ready;
         _discordSocketClient.Log -= Log;
 
@@ -74,11 +75,11 @@ public class TalkingBotClient : IHostedService
     public async Task Ready() {
         await SetupInteractions();
         
-        _logger.LogInformation("Client {0} is ready!", _discordSocketClient);
+        _logger.LogInformation("Client {} is ready!", _discordSocketClient);
     }
 
     private Task InteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result) {
-        _logger.LogDebug("@{} executed command '{0}'.", context.User.Username, command.Name);
+        _logger.LogDebug("@{} executed command '{}'.", context.User.Username, command.Name);
 
         return Task.CompletedTask;
     }
@@ -91,16 +92,18 @@ public class TalkingBotClient : IHostedService
             var guild = _discordSocketClient.GetGuild(guildId);
 
             if(guild is null) {
-                _logger.LogWarning("Guild id {0} wasn't found", guildId);
+                _logger.LogWarning("Guild id {} wasn't found", guildId);
                 continue;
             }
 
             await _interactionService.RegisterCommandsToGuildAsync(guildId, true);
 
-            _logger.LogDebug("Built commands for guild {0}.", guild.Name);
+            _logger.LogDebug("Built commands for guild {}.", guild.Name);
         }
 
-        _logger.LogInformation($"Built commands for {_config.Guilds.Length} guilds.");
+        _logger.LogInformation("Built {} commands for {} guilds.",
+            _interactionService.SlashCommands.Count, _config.Guilds.Length
+        );
     }
 
     public Task Log(LogMessage message) {
@@ -114,7 +117,7 @@ public class TalkingBotClient : IHostedService
             _ => LogLevel.None
         };
 
-        _logger.Log(level, message: message.Message, exception: message.Exception);
+        _logger.Log(logLevel: level, message: message.Message, exception: message.Exception);
         
         return Task.CompletedTask;
     }
