@@ -104,6 +104,10 @@ public class TalkingBotClient : IHostedService
                 continue;
             }
 
+            if(_config.ClearCommands) {
+                await guild.DeleteApplicationCommandsAsync();
+            }
+
             await _interactionService.RegisterCommandsToGuildAsync(guildId, true);
 
             _logger.LogDebug("Built commands for guild {}.", guild.Name);

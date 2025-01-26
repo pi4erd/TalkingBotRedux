@@ -3,40 +3,38 @@ using Newtonsoft.Json;
 
 namespace TalkingBot.Core;
 
-public class TalkingBotConfig {
+public class TalkingBotConfig(
+    ulong[] guilds,
+    string token = "",
+    string lavalinkHost = "http://localhost:2333",
+    string lavalinkPassword = "youshallnotpass",
+    LogLevel logLevel = LogLevel.Debug,
+    bool clearCommands = false
+    )
+{
     [JsonProperty("token")]
-    public string Token { get; set; }
+    public string Token { get; set; } = token;
 
     [JsonProperty("guilds")]
-    public ulong[] Guilds { get; set; }
+    public ulong[] Guilds { get; set; } = guilds;
 
-    [JsonProperty("lavalinkHost")] // example: "http://localhost:2333"
-    public string LavalinkHost { get; set; }
+    [JsonProperty("lavalinkHost")]
+    public string LavalinkHost { get; set; } = lavalinkHost;
 
     [JsonProperty("lavalinkPassword")]
-    public string LavalinkPassword { get; set; }
+    public string LavalinkPassword { get; set; } = lavalinkPassword;
 
     [JsonProperty("logLevel")]
-    public LogLevel LogLevel { get; set; }
+    public LogLevel LogLevel { get; set; } = logLevel;
 
-    public TalkingBotConfig(
-        ulong[] guilds,
-        string token="",
-        string lavalinkHost="http://localhost:2333",
-        string lavalinkPassword="youshallnotpass",
-        LogLevel logLevel=LogLevel.Debug
-    ) {
-        Token = token;
-        Guilds = guilds;
-        LogLevel = logLevel;
-        LavalinkHost = lavalinkHost;
-        LavalinkPassword = lavalinkPassword;
-    }
+    [JsonProperty("clearCommands")]
+    public bool ClearCommands { get; set; } = clearCommands;
 
     public static TalkingBotConfig? Read(string filename) {
-        string rawJson = "";
+        string rawJson;
 
-        try {
+        try
+        {
             rawJson = File.ReadAllText(filename);
         } catch(FileNotFoundException) {
             return null;

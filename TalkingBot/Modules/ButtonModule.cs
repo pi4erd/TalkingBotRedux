@@ -14,7 +14,7 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
         var roleMsg = cacher.cachedMessages.Find(m => m.MessageId == Context.Interaction.Message.Id);
 
         if(roleMsg is null) {
-            await RespondAsync("Interaction failed because message apparently was deleted.", ephemeral: true);
+            await RespondAsync("Interaction failed because failed to find message in cache.", ephemeral: true);
             logger.LogWarning("Interaction failed. Cache probably outdated!");
             return;
         }
