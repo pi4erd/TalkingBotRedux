@@ -156,7 +156,7 @@ public class AudioModule(
             .WithTitle("Current queue")
             .WithColor(Color.Green)
             .WithDescription($"Now playing [**{track.Title}**]({track.Uri})")
-            .WithThumbnailUrl(track.Uri?.OriginalString);
+            .WithThumbnailUrl(track.ArtworkUri?.OriginalString);
         
         uint count = 0;
         foreach(var queueItem in player.Queue) {
@@ -325,7 +325,26 @@ public class AudioModule(
         }
 
         if(songId == 0) {
-            await Skip();
+            if(player.Queue.IsEmpty) {
+                await FollowupAsync("Cannot skip track because it's the only one in queue.", ephemeral: true);
+                return;
+            }
+
+            await player.SkipAsync();
+
+            var newTrack = player.CurrentTrack;
+
+            var embed = new EmbedBuilder()
+                .WithTitle(newTrack.Title)
+                .WithDescription($"Now playing [**{newTrack.Title}**]({newTrack.Uri})")
+                .WithColor(Color.Blue)
+                .WithThumbnailUrl(newTrack.ArtworkUri?.OriginalString ?? "")
+                .AddField("Duration", newTrack.Duration, true)
+                .AddField("Skipped to by", Context.User.Mention, true)
+                .AddField("Video author", newTrack.Author)
+                .Build();
+
+            await FollowupAsync($"Removed current song from playback. Skipping to next one.", embeds: [embed]);
             return;
         }
 
