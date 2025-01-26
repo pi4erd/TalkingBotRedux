@@ -56,7 +56,6 @@ builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<Dis
 builder.Services.AddHostedService<TalkingBotClient>();
 
 builder.Services.AddLavalink();
-// TODO: Add custom config with log-level select
 builder.Services.AddLogging(x => x.AddConsole().SetMinimumLevel(botConfig.LogLevel));
 builder.Services.ConfigureLavalink(config =>
 {
