@@ -5,9 +5,9 @@ namespace TalkingBot.Core.Caching;
 
 // NOTE: This is a service
 public class Cache<T>(ILogger<Cache<T>> logger) {
-    private string typename = typeof(T).Name;
+    private readonly string typename = typeof(T).Name;
     // TODO: Allow setting cache directory in a config
-    private string cacheDirectory = Directory.GetCurrentDirectory();
+    private readonly string cacheDirectory = Directory.GetCurrentDirectory();
 
     public void SaveCached(T[] cache) {
         string json = JsonConvert.SerializeObject(cache);
@@ -19,9 +19,8 @@ public class Cache<T>(ILogger<Cache<T>> logger) {
 
         logger.LogInformation("Saved cache for {}.", typename);
 
-        using(StreamWriter sw = new StreamWriter(dir + filename)) {
-            sw.Write(json);
-        }
+        using StreamWriter sw = new(dir + filename);
+        sw.Write(json);
     }
     
     public T[]? LoadCached() {
