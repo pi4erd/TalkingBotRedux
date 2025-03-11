@@ -19,8 +19,10 @@ public class AudioModule(
 
     [SlashCommand("join", "Joins voice channel.", runMode: RunMode.Async)]
     public async Task Join() {
+        await DeferAsync().ConfigureAwait(false);
+
         if(Context.User is not IVoiceState voiceState) {
-            await RespondAsync(Messages.USER_NOT_CONNECTED, ephemeral: true)
+            await FollowupAsync(Messages.USER_NOT_CONNECTED, ephemeral: true)
                 .ConfigureAwait(false);
             return;
         }
@@ -32,7 +34,7 @@ public class AudioModule(
             Options.Create(new QueuedLavalinkPlayerOptions())
         ).ConfigureAwait(false);
 
-        await RespondAsync($"Joined voice channel {voiceState.VoiceChannel.Mention}");
+        await FollowupAsync($"Joined voice channel {voiceState.VoiceChannel.Mention}");
     }
 
     public enum SearchModeWrapper {

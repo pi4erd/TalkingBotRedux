@@ -95,6 +95,7 @@ public class TalkingBotClient : IHostedService
         await _interactionService.AddModuleAsync<AudioModule>(_serviceProvider);
         await _interactionService.AddModuleAsync<GeneralModule>(_serviceProvider);
         await _interactionService.AddModuleAsync<ButtonModule>(_serviceProvider);
+        await _interactionService.AddModuleAsync<GameModule>(_serviceProvider);
         
         foreach(var guildId in _config.Guilds) {
             var guild = _discordSocketClient.GetGuild(guildId);
@@ -105,12 +106,19 @@ public class TalkingBotClient : IHostedService
             }
 
             if(_config.ClearCommands) {
-                await guild.DeleteApplicationCommandsAsync();
+                await guild.DeleteApplicationCommandsAsync(RequestOptions.Default);
+                _logger.LogDebug("Deleted all commands for guild {}.", guild.Name);
+                continue;
             }
 
             await _interactionService.RegisterCommandsToGuildAsync(guildId, true);
 
             _logger.LogDebug("Built commands for guild {}.", guild.Name);
+        }
+
+        if(_config.ClearCommands) {
+            _logger.LogInformation("Stopping because deleted commands in config.");
+            Environment.Exit(0);
         }
 
         _logger.LogInformation("Built {} commands for {} guilds.",

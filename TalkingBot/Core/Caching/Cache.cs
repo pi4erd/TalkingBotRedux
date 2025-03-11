@@ -9,22 +9,27 @@ public class Cache<T>(ILogger<Cache<T>> logger) {
     // TODO: Allow setting cache directory in a config
     private readonly string cacheDirectory = Directory.GetCurrentDirectory();
 
-    public void SaveCached(T[] cache) {
+    public void SaveCached(T cache, string cacheName) {
         string json = JsonConvert.SerializeObject(cache);
 
-        string filename = $"cache_{typename}.json";
+        string filename = $"cache_{cacheName}.json";
         string dir = cacheDirectory + "/Cache/";
         
         if(!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-        logger.LogInformation("Saved cache for {}.", typename);
+        logger.LogInformation("Saved cache for {} with name {}.", typename, cacheName);
 
-        using StreamWriter sw = new(dir + filename);
-        sw.Write(json);
+        try {
+            using StreamWriter sw = new(dir + filename);
+            sw.Write(json);
+        } catch(IOException) {
+            logger.LogError("Failed to save cache for {} with name {}.", typename, cacheName);
+        }
+        
     }
     
-    public T[]? LoadCached() {
-        string filename = $"cache_{typename}.json";
+    public T? LoadCached(string cacheName) {
+        string filename = $"cache_{cacheName}.json";
         string dir = cacheDirectory + "/Cache/";
 
         string json = "";
@@ -36,12 +41,12 @@ public class Cache<T>(ILogger<Cache<T>> logger) {
         } catch(IOException) {
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             File.Create(dir + filename);
-            return null;
+            return default;
         }
 
-        logger.LogInformation("Loaded cache for {}.", typename);
+        logger.LogInformation("Loaded cache for {} from {}.", typename, cacheName);
 
-        var result = JsonConvert.DeserializeObject<T[]>(json);
+        var result = JsonConvert.DeserializeObject<T>(json);
 
         return result;
     }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Discord.Rest;
 using TalkingBot.Core.Caching;
 using TalkingBot.Services;
+using TalkingBot.Modules;
 
 HostApplicationBuilder builder = new(args);
 
@@ -50,7 +51,13 @@ if (botConfig is null)
 builder.Services.AddSingleton(botConfig);
 builder.Services.AddSingleton<DiscordSocketClient>();
 builder.Services.AddSingleton<InteractionService>();
-builder.Services.AddSingleton<Cache<RoleMessageCache>>();
+builder.Services.AddSingleton<Cache<RoleMessageCache[]>>();
+builder.Services.AddSingleton<Cache<Dictionary<ulong, UserGameData>>>();
+builder.Services.AddTransient<AudioModule>();
+builder.Services.AddTransient<GameModule>();
+builder.Services.AddTransient<ButtonModule>();
+builder.Services.AddTransient<GeneralModule>();
+builder.Services.AddTransient<GameDataCacher>();
 builder.Services.AddSingleton<MessageCacher>();
 builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordSocketClient>());
 builder.Services.AddHostedService<TalkingBotClient>();

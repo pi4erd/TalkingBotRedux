@@ -11,10 +11,12 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
 {
     [ComponentInteraction("add-role", runMode: RunMode.Async)]
     public async Task AddRoleButton() {
+        await DeferAsync(true).ConfigureAwait(false);
+
         var roleMsg = cacher.cachedMessages.Find(m => m.MessageId == Context.Interaction.Message.Id);
 
         if(roleMsg is null) {
-            await RespondAsync("Interaction failed because failed to find message in cache.", ephemeral: true);
+            await FollowupAsync("Interaction failed because failed to find message in cache.", ephemeral: true);
             logger.LogWarning("Interaction failed. Cache probably outdated!");
             return;
         }
@@ -22,7 +24,7 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
         var role = await Context.Guild.GetRoleAsync(roleMsg.RoleId);
 
         if(role is null) {
-            await RespondAsync("Role wasn't found in guild. Message probably wouldn't work.", ephemeral: true);
+            await FollowupAsync("Role wasn't found in guild. Message probably wouldn't work.", ephemeral: true);
             logger.LogWarning("Interaction failed. Cache probably outdated!");
             return;
         }
@@ -32,7 +34,7 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
         try {
             await user.AddRoleAsync(role);
         } catch(Exception) {
-            await RespondAsync("Error occured while giving role. " +
+            await FollowupAsync("Error occured while giving role. " +
                 "Probably the bot doesn't have enough permissions. Ask administrator " +
                 "if you think this problem shouldn't exist.", ephemeral: true);
             logger.LogWarning("Interaction failed. Bot probably doesn't have" + 
@@ -40,6 +42,6 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
             return;
         }
 
-        await RespondAsync($"You successfully got the role {role.Mention}!", ephemeral: true);
+        await FollowupAsync($"You successfully got the role {role.Mention}!", ephemeral: true);
     }
 }
