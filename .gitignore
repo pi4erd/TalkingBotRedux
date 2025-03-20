@@ -2,3 +2,4 @@ bin
 obj
 **/Config.json
 Cache
+dist
