@@ -10,10 +10,14 @@ public class UserGameData {
     [JsonProperty("lastDaily")]
     public DateTime LastDaily { get; set; }
 
+    [JsonProperty("lastDice")]
+    public DateTime LastDice { get; set; }
+
     public static UserGameData Default() {
         return new UserGameData {
             Money = 0,
-            LastDaily = DateTime.MinValue
+            LastDaily = DateTime.MinValue,
+            LastDice = DateTime.MinValue,
         };
     }
 }

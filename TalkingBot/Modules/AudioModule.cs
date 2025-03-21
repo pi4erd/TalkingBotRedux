@@ -38,7 +38,7 @@ public class AudioModule(
     }
 
     public enum SearchModeWrapper {
-        YouTube, Soundcloud
+        YouTube, SoundCloud
     }
 
     [SlashCommand("play", "Plays the song or enqueues it.", runMode: RunMode.Async)]
@@ -57,7 +57,7 @@ public class AudioModule(
         TrackSearchMode mode = Uri.IsWellFormedUriString(query, UriKind.Absolute) ?
             TrackSearchMode.None : searchMode switch {
                 SearchModeWrapper.YouTube => TrackSearchMode.YouTube,
-                SearchModeWrapper.Soundcloud => TrackSearchMode.SoundCloud,
+                SearchModeWrapper.SoundCloud => TrackSearchMode.SoundCloud,
                 _ => TrackSearchMode.None
             };
 
