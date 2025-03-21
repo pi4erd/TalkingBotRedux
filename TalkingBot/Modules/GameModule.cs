@@ -1,3 +1,4 @@
+using Discord;
 using Discord.Interactions;
 using TalkingBot.Core.Caching;
 using TalkingBot.Services;
@@ -40,60 +41,53 @@ public class GameModule(GameDataCacher gameDataCacher) : InteractionModuleBase {
             "||(to get more, complete quests and run `/daily` daily)||");
     }
 
-    private static char? FormatDice(int n) {
-        return n switch {
-            1 => '⚀',
-            2 => '⚁',
-            3 => '⚂',
-            4 => '⚃',
-            5 => '⚄',
-            6 => '⚅',
-            _ => null,
-        };
-    }
-
     [SlashCommand("dice", "Play dice and gamble :)", runMode: RunMode.Async)]
-    public async Task Dice([Summary("bet", "Your bet. You lose or gain this much.")] ulong bet) {
+    public async Task Dice([Summary("bet", "Your bet. You lose or gain this much."), ] long bet) {
         const double cooldownHours = 1.0;
         await DeferAsync().ConfigureAwait(false);
 
         UserGameData userData = gameDataCacher.GetUserGameData(Context.User.Id);
 
-        double hoursElapsed = (DateTime.Now - userData.LastDaily).TotalHours;
+        double hoursElapsed = (DateTime.Now - userData.LastDice).TotalHours;
 
-        if(hoursElapsed < cooldownHours) {
-            await FollowupAsync($"You can play dice {(cooldownHours - hoursElapsed) * 60.0:.} minutes.", ephemeral: true);
+        if(bet <= 0) {
+            await FollowupAsync("Can't bet zero or negative 🪙!!!", ephemeral: true);
             return;
         }
 
-        await FollowupAsync($"You bet {bet}🪙.");
+        if(hoursElapsed < cooldownHours) {
+            await FollowupAsync($"You can play dice in {(cooldownHours - hoursElapsed) * 60.0:.} minutes.", ephemeral: true);
+            return;
+        }
+
+        if(bet > (long)userData.Money) {
+            await FollowupAsync($"You can't bet {bet}🪙 because you're broke.", ephemeral: true);
+            return;
+        }
+
+        await FollowupAsync($"You bet **{bet}**🪙.");
         await Task.Delay(1000);
-        await FollowupAsync("You roll your dice...");
+        await FollowupAsync("You roll your dice...", ephemeral: true);
         await Task.Delay(1000);
 
         int dice1 = Random.Shared.Next(1, 7);
         int dice2 = Random.Shared.Next(1, 7);
 
-        char diceChar1 = FormatDice(dice1) ?? '-';
-        char diceChar2 = FormatDice(dice1) ?? '-';
-
-        await FollowupAsync($"You get: {diceChar1} and {diceChar2}");
+        await FollowupAsync($"You get: **{dice1}** and **{dice2}**", ephemeral: true);
         await Task.Delay(1000);
 
         int myDice1 = Random.Shared.Next(1, 7);
         int myDice2 = Random.Shared.Next(1, 7);
-        char myDiceChar1 = FormatDice(dice1) ?? '-';
-        char myDiceChar2 = FormatDice(dice1) ?? '-';
 
-        await FollowupAsync($"I roll {myDiceChar1} and {myDiceChar2}");
+        await FollowupAsync($"I roll **{myDice1}** and **{myDice2}**", ephemeral: true);
         await Task.Delay(1000);
         
         if(dice1 + dice2 > myDice1 + myDice2) { // player wins
-            await FollowupAsync($"You won! You gain {bet * 2}🪙.");
-            userData.Money += bet;
+            await FollowupAsync($"You won! You gain **{bet * 2}**🪙.");
+            userData.Money += (ulong)bet;
         } else if(dice1 + dice2 < myDice1 + myDice2) { // player loses
-            await FollowupAsync($"You lost! You lose {bet}🪙.");
-            userData.Money -= bet;
+            await FollowupAsync($"You lost! You lose **{bet}**🪙.");
+            userData.Money -= (ulong)bet;
         } else { // draw
             await FollowupAsync($"Draw! You don't gain nor lose.");
         }

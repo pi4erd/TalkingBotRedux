@@ -84,10 +84,7 @@ public class TalkingBotClient : IHostedService
         if(!result.IsSuccess) {
             _logger.LogWarning("Error occured while executing interaction: {}.\n{}", result.Error, result.ErrorReason);
 
-            await context.Interaction.GetOriginalResponseAsync()
-                .ContinueWith(msg => msg.Result.DeleteAsync());
-
-            await context.Interaction.FollowupAsync("Failed to execute interaction!", ephemeral: true);
+            await context.Interaction.RespondAsync("Failed to execute interaction!", ephemeral: true);
         }
     }
 

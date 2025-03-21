@@ -4,7 +4,7 @@ using TalkingBot.Core.Caching;
 
 namespace TalkingBot.Services;
 
-public class GameDataCacher {
+public class GameDataCacher : IDisposable {
     private Dictionary<ulong, UserGameData> cachedData;
     private readonly ILogger<GameDataCacher> _logger;
     private readonly Cache<Dictionary<ulong, UserGameData>> _cache;
@@ -19,11 +19,12 @@ public class GameDataCacher {
     }
 
     public UserGameData GetUserGameData(ulong uid) {
-        if(!cachedData.ContainsKey(uid)) {
-            cachedData.Add(uid, UserGameData.Default());
+        if(!cachedData.TryGetValue(uid, out UserGameData? value)) {
+            value = UserGameData.Default();
+            cachedData.Add(uid, value);
             _cache.SaveCached(cachedData, CacheName);
         }
-        return cachedData[uid];
+        return value;
     }
 
     public void ModifyUserData(ulong uid, UserGameData data) {
@@ -32,5 +33,12 @@ public class GameDataCacher {
         }
         cachedData[uid] = data;
         _cache.SaveCached(cachedData, CacheName);
+    }
+
+    public void Dispose()
+    {
+        _logger.LogInformation("Saving GameDataCacher cache on disposal.");
+        _cache.SaveCached(cachedData, CacheName);
+        GC.SuppressFinalize(this);
     }
 }

@@ -57,7 +57,7 @@ builder.Services.AddTransient<AudioModule>();
 builder.Services.AddTransient<GameModule>();
 builder.Services.AddTransient<ButtonModule>();
 builder.Services.AddTransient<GeneralModule>();
-builder.Services.AddTransient<GameDataCacher>();
+builder.Services.AddSingleton<GameDataCacher>();
 builder.Services.AddSingleton<MessageCacher>();
 builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordSocketClient>());
 builder.Services.AddHostedService<TalkingBotClient>();
