@@ -2,6 +2,8 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using TalkingBot.Core.Caching;
 
+namespace TalkingBot.Services;
+
 public class GameDataCacher {
     private Dictionary<ulong, UserGameData> cachedData;
     private readonly ILogger<GameDataCacher> _logger;

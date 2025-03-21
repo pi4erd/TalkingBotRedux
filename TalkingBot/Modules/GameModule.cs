@@ -1,4 +1,6 @@
 using Discord.Interactions;
+using TalkingBot.Core.Caching;
+using TalkingBot.Services;
 
 namespace TalkingBot.Modules;
 

@@ -1,6 +1,8 @@
 // Per-user game data
 using Newtonsoft.Json;
 
+namespace TalkingBot.Core.Caching;
+
 public class UserGameData {
     [JsonProperty("money")]
     public ulong Money { get; set; }

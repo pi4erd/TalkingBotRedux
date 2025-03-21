@@ -3,7 +3,6 @@ using TalkingBot.Core.Caching;
 
 namespace TalkingBot.Services;
 
-// NOTE: This is a service
 public class MessageCacher(ILogger<MessageCacher> logger, Cache<RoleMessageCache[]> cache)
 {
     private readonly ILogger<MessageCacher> _logger = logger;
