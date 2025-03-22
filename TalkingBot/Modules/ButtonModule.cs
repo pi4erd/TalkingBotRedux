@@ -13,11 +13,11 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
     public async Task AddRoleButton() {
         await DeferAsync(true).ConfigureAwait(false);
 
-        var roleMsg = cacher.cachedMessages.Find(m => m.MessageId == Context.Interaction.Message.Id);
+        var roleMsg = cacher.FindMessage(Context);
 
         if(roleMsg is null) {
             await FollowupAsync("Interaction failed because failed to find message in cache.", ephemeral: true);
-            logger.LogWarning("Interaction failed. Cache probably outdated!");
+            logger.LogWarning("Role message interaction failed. Cache probably outdated!");
             return;
         }
 
@@ -25,7 +25,7 @@ public class ButtonModule(MessageCacher cacher, ILogger<ButtonModule> logger)
 
         if(role is null) {
             await FollowupAsync("Role wasn't found in guild. Message probably wouldn't work.", ephemeral: true);
-            logger.LogWarning("Interaction failed. Cache probably outdated!");
+            logger.LogWarning("Role message interaction failed. Cache probably outdated!");
             return;
         }
 

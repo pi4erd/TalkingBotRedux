@@ -6,6 +6,7 @@ using Discord.Interactions;
 using TalkingBot.Core;
 using Microsoft.Extensions.Logging;
 using Discord.Rest;
+using Discord;
 using TalkingBot.Core.Caching;
 using TalkingBot.Services;
 using TalkingBot.Modules;
@@ -49,6 +50,9 @@ if (botConfig is null)
 }
 
 builder.Services.AddSingleton(botConfig);
+builder.Services.AddSingleton(new DiscordSocketConfig() {
+    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMessages
+});
 builder.Services.AddSingleton<DiscordSocketClient>();
 builder.Services.AddSingleton<InteractionService>();
 builder.Services.AddSingleton<Cache<RoleMessageCache[]>>();

@@ -1,3 +1,5 @@
+using Discord.Interactions;
+using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
 using TalkingBot.Core.Caching;
 
@@ -8,7 +10,7 @@ public class MessageCacher(ILogger<MessageCacher> logger, Cache<RoleMessageCache
 {
     private readonly ILogger<MessageCacher> _logger = logger;
     private readonly Cache<RoleMessageCache[]> _cache = cache;
-    public List<RoleMessageCache> cachedMessages = cache.LoadCached(CacheName)?.ToList() ?? [];
+    private readonly List<RoleMessageCache> cachedMessages = cache.LoadCached(CacheName)?.ToList() ?? [];
     private const string CacheName = "MessageCacher";
 
     public void AddMessage(RoleMessageCache cache) {
@@ -17,6 +19,12 @@ public class MessageCacher(ILogger<MessageCacher> logger, Cache<RoleMessageCache
         _cache.SaveCached([.. cachedMessages], CacheName);
 
         _logger.LogDebug("Added role message and saved cache.");
+    }
+
+    public RoleMessageCache? FindMessage(
+        SocketInteractionContext<SocketMessageComponent> context
+    ) {
+        return cachedMessages.Find(m => m.MessageId == context.Interaction.Message.Id);
     }
 
     public void Dispose()

@@ -95,4 +95,14 @@ public class GameModule(GameDataCacher gameDataCacher) : InteractionModuleBase {
         userData.LastDice = DateTime.Now;
         gameDataCacher.ModifyUserData(Context.User.Id, userData);
     }
+
+    [SlashCommand("level", "Show information on your level")]
+    public async Task Level() {
+        await DeferAsync().ConfigureAwait(false);
+
+        UserGameData userData = gameDataCacher.GetUserGameData(Context.User.Id);
+
+        await FollowupAsync($"Your level is **{userData.Level}** " +
+            $"({userData.Experience}/{(userData.Level + 1) * UserGameData.ExpRequirement})");
+    }
 }
