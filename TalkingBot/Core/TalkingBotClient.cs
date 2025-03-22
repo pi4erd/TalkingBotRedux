@@ -58,6 +58,9 @@ public class TalkingBotClient : IHostedService
         await _discordSocketClient
             .StartAsync()
             .ConfigureAwait(false);
+        
+        // TODO: Add sharded client
+        await _discordSocketClient.SetActivityAsync(new Game("Talking", ActivityType.Competing));
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
