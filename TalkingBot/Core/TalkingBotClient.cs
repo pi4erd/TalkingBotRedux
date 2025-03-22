@@ -2,6 +2,7 @@ using System.Reflection;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Lavalink4NET;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ public class TalkingBotClient : IHostedService
     public static string CurrentVersion { get; private set; }
 
     private readonly DiscordSocketClient _discordSocketClient;
+    private readonly MessageEventListener _messageEventListener;
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly TalkingBotConfig _config;
@@ -32,6 +34,7 @@ public class TalkingBotClient : IHostedService
     public TalkingBotClient(
         DiscordSocketClient discordSocketClient,
         InteractionService interactionService,
+        MessageEventListener messageEventListener,
         IServiceProvider serviceProvider,
         TalkingBotConfig config,
         ILogger<TalkingBotClient> logger
@@ -42,6 +45,7 @@ public class TalkingBotClient : IHostedService
 
         _discordSocketClient = discordSocketClient;
         _interactionService = interactionService;
+        _messageEventListener = messageEventListener;
         _serviceProvider = serviceProvider;
         _config = config;
         _logger = logger;
@@ -53,7 +57,8 @@ public class TalkingBotClient : IHostedService
         _discordSocketClient.Ready += Ready;
         _interactionService.InteractionExecuted += InteractionExecuted;
         _discordSocketClient.Log += Log;
-        _discordSocketClient.MessageReceived += OnMessage;
+
+        // var audioService = _serviceProvider.GetService<IAudioService>();
 
         await _discordSocketClient
             .LoginAsync(Discord.TokenType.Bot, _config.Token)
@@ -70,40 +75,10 @@ public class TalkingBotClient : IHostedService
         _interactionService.InteractionExecuted -= InteractionExecuted;
         _discordSocketClient.Ready -= Ready;
         _discordSocketClient.Log -= Log;
-        _discordSocketClient.MessageReceived -= OnMessage;
 
         await _discordSocketClient
             .StopAsync()
             .ConfigureAwait(false);
-    }
-
-    public async Task OnMessage(SocketMessage message) {
-        // TODO: Add OnMessageGame module or something like this
-        if(message.Author.IsBot) {
-            return;
-        }
-
-        // Experience on messages
-        GameDataCacher cacher = _serviceProvider.GetRequiredService<GameDataCacher>();
-
-        UserGameData gameData = cacher.GetUserGameData(message.Author.Id);
-
-        double minutes_elapsed = (DateTime.Now - gameData.LastExpGain).TotalMinutes;
-
-        _logger.LogDebug("User {} sent message.", message.Author.Username);
-
-        if(minutes_elapsed < 1.0) {
-            return; // skip this level gain
-        }
-
-        gameData.Experience += UserGameData.ExpGainPerMessage;
-        gameData.LastExpGain = DateTime.Now;
-
-        _logger.LogDebug("User {} gained {} experience.", message.Author.Username, UserGameData.ExpGainPerMessage);
-        
-        if(gameData.UpdateLevel()) {
-            await message.Channel.SendMessageAsync($"{message.Author.Mention} leveled up to **{gameData.Level}**!");
-        }
     }
 
     public async Task Ready() {
