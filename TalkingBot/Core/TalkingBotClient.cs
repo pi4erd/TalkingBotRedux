@@ -17,7 +17,6 @@ public class TalkingBotClient : IHostedService
     public static string CurrentVersion { get; private set; }
 
     private readonly DiscordSocketClient _discordSocketClient;
-    private readonly MessageEventListener _messageEventListener;
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly TalkingBotConfig _config;
@@ -34,7 +33,6 @@ public class TalkingBotClient : IHostedService
     public TalkingBotClient(
         DiscordSocketClient discordSocketClient,
         InteractionService interactionService,
-        MessageEventListener messageEventListener,
         IServiceProvider serviceProvider,
         TalkingBotConfig config,
         ILogger<TalkingBotClient> logger
@@ -45,7 +43,6 @@ public class TalkingBotClient : IHostedService
 
         _discordSocketClient = discordSocketClient;
         _interactionService = interactionService;
-        _messageEventListener = messageEventListener;
         _serviceProvider = serviceProvider;
         _config = config;
         _logger = logger;
