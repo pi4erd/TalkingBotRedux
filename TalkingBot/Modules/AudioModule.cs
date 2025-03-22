@@ -4,6 +4,7 @@ using Lavalink4NET;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace TalkingBot.Modules;
@@ -277,7 +278,7 @@ public class AudioModule(
         var player = await GetPlayerAsync(false).ConfigureAwait(false);
 
         if(player is null) {
-            return;
+            return; // assume GetPlayerAsync responded
         }
 
         if(player.State.HasFlag(PlayerState.Playing) && !player.State.HasFlag(PlayerState.Paused)) {
@@ -386,6 +387,9 @@ public class AudioModule(
 
     private async Task<QueuedLavalinkPlayer?> GetPlayerAsync(bool connectToVoice = true) {
         if(Context.User is not IVoiceState voiceState) {
+            await FollowupAsync(Messages.USER_NOT_CONNECTED).ConfigureAwait(false);
+            return null;
+        } else if (voiceState.VoiceChannel is null) {
             await FollowupAsync(Messages.USER_NOT_CONNECTED).ConfigureAwait(false);
             return null;
         }
