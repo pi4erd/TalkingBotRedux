@@ -16,7 +16,7 @@ public class TalkingBotClient : IHostedService
 {
     public static string CurrentVersion { get; private set; }
 
-    private readonly DiscordSocketClient _discordSocketClient;
+    private readonly DiscordShardedClient _client;
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly TalkingBotConfig _config;
@@ -31,7 +31,7 @@ public class TalkingBotClient : IHostedService
     }
 
     public TalkingBotClient(
-        DiscordSocketClient discordSocketClient,
+        DiscordShardedClient discordSocketClient,
         InteractionService interactionService,
         IServiceProvider serviceProvider,
         TalkingBotConfig config,
@@ -41,47 +41,55 @@ public class TalkingBotClient : IHostedService
         ArgumentNullException.ThrowIfNull(interactionService);
         ArgumentNullException.ThrowIfNull(serviceProvider);
 
-        _discordSocketClient = discordSocketClient;
+        _client = discordSocketClient;
         _interactionService = interactionService;
         _serviceProvider = serviceProvider;
         _config = config;
         _logger = logger;
+
+        // Initialize unused directly, but necessary services
+        _ = _serviceProvider.GetRequiredService<MessageEventListener>();
+        _ = _serviceProvider.GetRequiredService<AudioEventListener>();
     }
     
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _discordSocketClient.InteractionCreated += InteractionCreated;
-        _discordSocketClient.Ready += Ready;
+        _client.InteractionCreated += InteractionCreated;
+        _client.ShardReady += ShardReady;
         _interactionService.InteractionExecuted += InteractionExecuted;
-        _discordSocketClient.Log += Log;
+        _client.Log += Log;
 
         // var audioService = _serviceProvider.GetService<IAudioService>();
 
-        await _discordSocketClient
-            .LoginAsync(Discord.TokenType.Bot, _config.Token)
+        await _client
+            .LoginAsync(TokenType.Bot, _config.Token)
             .ConfigureAwait(false);
 
-        await _discordSocketClient
+        await _client
             .StartAsync()
             .ConfigureAwait(false);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _discordSocketClient.InteractionCreated -= InteractionCreated;
+        _client.InteractionCreated -= InteractionCreated;
         _interactionService.InteractionExecuted -= InteractionExecuted;
-        _discordSocketClient.Ready -= Ready;
-        _discordSocketClient.Log -= Log;
+        _client.ShardReady -= ShardReady;
+        _client.Log -= Log;
 
-        await _discordSocketClient
+        await _client
             .StopAsync()
             .ConfigureAwait(false);
     }
 
-    public async Task Ready() {
+    public async Task ShardReady(DiscordSocketClient client) {
         await SetupInteractions();
         
-        _logger.LogInformation("Client {} is ready!", _discordSocketClient);
+        _logger.LogInformation("Shard for {} is ready!", client.Guilds.First().Name);
+        await client.SetActivityAsync(new Game(
+            "Nothing",
+            ActivityType.Listening
+        ));
     }
 
     private async Task InteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result) {
@@ -105,7 +113,7 @@ public class TalkingBotClient : IHostedService
         await _interactionService.AddModuleAsync<GameModule>(_serviceProvider);
         
         foreach(var guildId in _config.Guilds) {
-            var guild = _discordSocketClient.GetGuild(guildId);
+            var guild = _client.GetGuild(guildId);
 
             if(guild is null) {
                 _logger.LogWarning("Guild id {} wasn't found", guildId);
@@ -150,15 +158,29 @@ public class TalkingBotClient : IHostedService
     }
 
     public Task InteractionCreated(SocketInteraction interaction) {
+        DiscordSocketClient? client = GetShard(_client, interaction.GuildId);
+        if(client is null) {
+            _logger.LogWarning("Interaction from unsharded guild received: {}.", interaction.GuildId);
+            return Task.CompletedTask;
+        }
+
         if(interaction is SocketMessageComponent component) {
             var componentContext = new SocketInteractionContext<SocketMessageComponent>(
-                _discordSocketClient,
+                client,
                 component
             );
             return _interactionService.ExecuteCommandAsync(componentContext, _serviceProvider);
         }
 
-        var interactionContext = new SocketInteractionContext(_discordSocketClient, interaction);
+        var interactionContext = new SocketInteractionContext(client, interaction);
         return _interactionService.ExecuteCommandAsync(interactionContext, _serviceProvider);
+    }
+
+    public static DiscordSocketClient? GetShard(DiscordShardedClient client, ulong? guildId) {
+        if(guildId is null) return null;
+        IGuild? guild = client.GetGuild(guildId.Value);
+
+        if(guild is null) return null;
+        return client.GetShardFor(guild);
     }
 }

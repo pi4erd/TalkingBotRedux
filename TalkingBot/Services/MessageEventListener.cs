@@ -6,12 +6,12 @@ using TalkingBot.Services;
 namespace TalkingBot.Services;
 
 public class MessageEventListener : IDisposable {
-    private readonly DiscordSocketClient _client;
+    private readonly DiscordShardedClient _client;
     private readonly GameDataCacher _cacher;
     private readonly ILogger<MessageEventListener> _logger;
 
     public MessageEventListener(
-        DiscordSocketClient client,
+        DiscordShardedClient client,
         GameDataCacher cacher,
         ILogger<MessageEventListener> logger
     ) {
@@ -52,5 +52,6 @@ public class MessageEventListener : IDisposable {
     public void Dispose()
     {
         _client.MessageReceived -= OnMessage;
+        GC.SuppressFinalize(this);
     }
 }

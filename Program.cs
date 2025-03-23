@@ -51,9 +51,10 @@ if (botConfig is null)
 
 builder.Services.AddSingleton(botConfig);
 builder.Services.AddSingleton(new DiscordSocketConfig() {
-    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMessages
+    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMessages,
+    TotalShards = botConfig.Guilds.Length, // 1 shard per guild
 });
-builder.Services.AddSingleton<DiscordSocketClient>();
+builder.Services.AddSingleton<DiscordShardedClient>();
 builder.Services.AddSingleton<InteractionService>();
 builder.Services.AddSingleton<Cache<RoleMessageCache[]>>();
 builder.Services.AddSingleton<Cache<Dictionary<ulong, UserGameData>>>();
@@ -64,7 +65,8 @@ builder.Services.AddTransient<GeneralModule>();
 builder.Services.AddSingleton<GameDataCacher>();
 builder.Services.AddSingleton<MessageCacher>();
 builder.Services.AddSingleton<MessageEventListener>();
-builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordSocketClient>());
+builder.Services.AddSingleton<AudioEventListener>();
+builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordShardedClient>());
 builder.Services.AddHostedService<TalkingBotClient>();
 
 builder.Services.AddLavalink();
