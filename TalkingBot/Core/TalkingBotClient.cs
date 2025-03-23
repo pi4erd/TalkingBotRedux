@@ -22,6 +22,8 @@ public class TalkingBotClient : IHostedService
     private readonly TalkingBotConfig _config;
     private readonly ILogger<TalkingBotClient> _logger;
 
+    private bool _modulesLoaded = false;
+
     static TalkingBotClient() {
         CurrentVersion = Assembly
             .GetEntryAssembly()?
@@ -83,7 +85,7 @@ public class TalkingBotClient : IHostedService
     }
 
     public async Task ShardReady(DiscordSocketClient client) {
-        await SetupInteractions();
+        await SetupInteractions(client);
         
         _logger.LogInformation("Shard for {} is ready!", client.Guilds.First().Name);
         await client.SetActivityAsync(new Game(
@@ -106,39 +108,31 @@ public class TalkingBotClient : IHostedService
         }
     }
 
-    private async Task SetupInteractions() {
-        await _interactionService.AddModuleAsync<AudioModule>(_serviceProvider);
-        await _interactionService.AddModuleAsync<GeneralModule>(_serviceProvider);
-        await _interactionService.AddModuleAsync<ButtonModule>(_serviceProvider);
-        await _interactionService.AddModuleAsync<GameModule>(_serviceProvider);
+    private async Task SetupInteractions(DiscordSocketClient client) {
+        if(!_modulesLoaded) {
+            await _interactionService.AddModuleAsync<AudioModule>(_serviceProvider);
+            await _interactionService.AddModuleAsync<GeneralModule>(_serviceProvider);
+            await _interactionService.AddModuleAsync<ButtonModule>(_serviceProvider);
+            await _interactionService.AddModuleAsync<GameModule>(_serviceProvider);
+            _modulesLoaded = true;
+        }
+
+        var guild = client.Guilds.First();
         
-        foreach(var guildId in _config.Guilds) {
-            var guild = _client.GetGuild(guildId);
-
-            if(guild is null) {
-                _logger.LogWarning("Guild id {} wasn't found", guildId);
-                continue;
-            }
-
-            if(_config.ClearCommands) {
-                await guild.DeleteApplicationCommandsAsync(RequestOptions.Default);
-                _logger.LogDebug("Deleted all commands for guild {}.", guild.Name);
-                continue;
-            }
-
-            await _interactionService.RegisterCommandsToGuildAsync(guildId, true);
-
-            _logger.LogDebug("Built commands for guild {}.", guild.Name);
+        if(guild is null) {
+            _logger.LogWarning("Shard {} didn't have guilds!", client);
+            return;
         }
 
         if(_config.ClearCommands) {
-            _logger.LogInformation("Stopping because deleted commands in config.");
-            Environment.Exit(0);
+            await guild.DeleteApplicationCommandsAsync(RequestOptions.Default);
+            _logger.LogDebug("Deleted all commands for guild {}.", guild.Name);
+            return;
         }
 
-        _logger.LogInformation("Built {} commands for {} guilds.",
-            _interactionService.SlashCommands.Count, _config.Guilds.Length
-        );
+        await _interactionService.RegisterCommandsToGuildAsync(guild.Id, true);
+
+        _logger.LogDebug("Built commands for guild {}.", guild.Name);
     }
 
     public Task Log(LogMessage message) {

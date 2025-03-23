@@ -25,8 +25,9 @@ public class AudioEventListener : IDisposable {
 
         _logger.LogInformation("Registering AudioEventListener");
 
-        _audioService.TrackStarted += OnTrackStarted;
-        _audioService.TrackEnded   += OnTrackEnd;
+        _audioService.TrackStarted   += OnTrackStarted;
+        _audioService.TrackEnded     += OnTrackEnd;
+        _audioService.TrackException += OnTrackException;
     }
 
     public async Task OnTrackStarted(object sender, TrackStartedEventArgs args) {
@@ -45,6 +46,11 @@ public class AudioEventListener : IDisposable {
         ));
     }
 
+    public Task OnTrackException(object sender, TrackExceptionEventArgs args) {
+        _logger.LogWarning("Track exception occured: {}", args.Exception);
+        return Task.CompletedTask;
+    }
+
     public async Task OnTrackEnd(object sender, TrackEndedEventArgs args) {
         _logger.LogDebug("Track ended: {}", args.Track.Title);
         
@@ -54,7 +60,7 @@ public class AudioEventListener : IDisposable {
             return;
         }
 
-        if(args.Reason.MayStartNext()) {
+        if(args.Reason == TrackEndReason.Stopped && !args.MayStartNext) {
             await client.SetActivityAsync(new Game(
                 "Nothing",
                 ActivityType.Listening
