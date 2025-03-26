@@ -4,13 +4,15 @@ using Lavalink4NET;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Lavalink4NET.Tracks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace TalkingBot.Modules;
 
 public class AudioModule(
-    IAudioService audioService
+    IAudioService audioService,
+    ILogger<AudioModule> logger
 ) : InteractionModuleBase {
     static class Messages {
         public const string USER_NOT_CONNECTED = "You are not connected to voice channel!";
@@ -63,35 +65,61 @@ public class AudioModule(
                 _ => TrackSearchMode.None
             };
 
-        var track = await audioService.Tracks
-            .LoadTrackAsync(query, new TrackLoadOptions(mode))
+        var tracks = await audioService.Tracks
+            .LoadTracksAsync(query, mode)
             .ConfigureAwait(false);
         
-        if(track is null) {
-            await FollowupAsync("Couldn't find anything.", ephemeral: true)
+        if(!tracks.IsSuccess) {
+            await FollowupAsync("Couldn't find track or playlist.", ephemeral: true)
                 .ConfigureAwait(false);
             return;
         }
 
+        bool playlist = tracks.IsPlaylist;
         bool enqueued = player.CurrentTrack is not null;
-
-        await player.PlayAsync(track).ConfigureAwait(false);
 
         EmbedBuilder embed = new();
 
-        if(enqueued) {
-            embed = embed.WithTitle($"Enqueued {track.Title}")
-                .WithDescription($"Enqueued [**{track.Title}**]({track.Uri})");
-        } else {
-            embed = embed.WithTitle(track.Title)
-                .WithDescription($"Now playing [**{track.Title}**]({track.Uri})");
-        }
+        if(playlist) {
+            uint count = 0;
+            foreach(var track in tracks.Tracks) {
+                await player.PlayAsync(track).ConfigureAwait(false);
+                count++;
 
-        embed = embed.WithColor(Color.Blue)
-            .WithThumbnailUrl(track.ArtworkUri?.OriginalString ?? "")
-            .AddField("Duration", track.Duration, true)
-            .AddField("Requested by", Context.User.Mention, true)
-            .AddField("Video author", track.Author);
+                // FIXME: Fix bug with Queue crashing if too many tracks are enqueued #1
+                if(count >= 15) {
+                    break;
+                }
+            }
+
+            if(enqueued) {
+                embed = embed.WithTitle($"Enqueued playlist {tracks.Playlist!.Name}")
+                    .WithDescription($"Enqueued [**{tracks.Track.Title}**]({tracks.Track.Uri})");
+            } else {
+                embed = embed.WithTitle($"Playlist {tracks.Playlist!.Name}")
+                    .WithDescription($"Now playing [**{tracks.Track.Title}**]({tracks.Track.Uri})");
+            }
+
+            embed = embed.WithColor(Color.Blue)
+                .WithThumbnailUrl(tracks.Playlist.SelectedTrack?.ArtworkUri?.OriginalString ?? "")
+                .AddField("Number of songs enqueued", count, true);
+        } else {
+            await player.PlayAsync(tracks.Track);
+
+            if(enqueued) {
+                embed = embed.WithTitle($"Enqueued {tracks.Track.Title}")
+                    .WithDescription($"Enqueued [**{tracks.Track.Title}**]({tracks.Track.Uri})");
+            } else {
+                embed = embed.WithTitle($"{tracks.Track.Title}")
+                    .WithDescription($"Now playing [**{tracks.Track.Title}**]({tracks.Track.Uri})");
+            }
+
+            embed = embed.WithColor(Color.Blue)
+                .WithThumbnailUrl(tracks.Track.ArtworkUri?.OriginalString ?? "")
+                .AddField("Duration", tracks.Track.Duration, true)
+                .AddField("Requested by", Context.User.Mention, true)
+                .AddField("Video author", tracks.Track.Author);
+        }
 
         await FollowupAsync(embeds: [embed.Build()]).ConfigureAwait(false);
     }
@@ -141,7 +169,7 @@ public class AudioModule(
 
     [SlashCommand("queue", "Shows currently queued tracks.", runMode: RunMode.Async)]
     public async Task GetQueue() {
-        await DeferAsync().ConfigureAwait(false);
+        await DeferAsync(ephemeral: false).ConfigureAwait(false);
 
         var player = await GetPlayerAsync(false).ConfigureAwait(false);
 
@@ -163,22 +191,32 @@ public class AudioModule(
             .WithThumbnailUrl(track.ArtworkUri?.OriginalString);
         
         uint count = 0;
-        foreach(var queueItem in player.Queue) {
-            count++; // 1-based indexing (oof)
+        LavalinkTrack[] queue;
+        try { // FIXME: Workaround for #1
+            queue = [.. player.Queue.Select((queueItem) => queueItem.Track)];
 
-            var queuedTrack = queueItem.Track;
-            if(queuedTrack is null) {
-                embedBuilder = embedBuilder.AddField($"{count}", "Failed to decode the track.");
-            } else {
+            foreach(var queuedTrack in queue) {
+                count++; // 1-based indexing (oof)
+
+                if(count > 13) {
+                    embedBuilder = embedBuilder.AddField("And more...", "");
+                    break;
+                }
+
                 embedBuilder = embedBuilder.AddField($"{count}", $"[**{queuedTrack.Title}**]({queuedTrack.Uri})");
             }
-        }
 
-        if(count == 0) {
-            embedBuilder.AddField("No tracks", "Queue is empty. Only currently playing track is there.");
-        }
+            if(count == 0) {
+                embedBuilder = embedBuilder.AddField("No tracks", "Queue is empty. Only currently playing track is there.");
+            }
 
-        await FollowupAsync(embeds: [embedBuilder.Build()]);
+            await FollowupAsync(embeds: [embedBuilder.Build()]).ConfigureAwait(false);
+        } catch(Exception) {
+            logger.LogWarning("Too big queue encountered!");
+            await FollowupAsync($"Queue too big to display ({player.Queue.Count}). " + 
+                "Refer to [#1](https://github.com/pi4erd/TalkingBotRedux/issues/1)");
+            return;
+        }
     }
 
     [SlashCommand("skip", "Skips current track.", runMode: RunMode.Async)]
