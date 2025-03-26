@@ -64,6 +64,7 @@ builder.Services.AddTransient<ButtonModule>();
 builder.Services.AddTransient<GeneralModule>();
 builder.Services.AddSingleton<GameDataCacher>();
 builder.Services.AddSingleton<MessageCacher>();
+builder.Services.AddSingleton<TalkingInteractionService>();
 builder.Services.AddSingleton<MessageEventListener>();
 builder.Services.AddSingleton<AudioEventListener>();
 builder.Services.AddSingleton<IRestClientProvider>(x => x.GetRequiredService<DiscordShardedClient>());
