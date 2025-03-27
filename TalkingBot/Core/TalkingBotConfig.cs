@@ -30,6 +30,9 @@ public class TalkingBotConfig(
     [JsonProperty("clearCommands")]
     public bool ClearCommands { get; set; } = clearCommands;
 
+    [JsonProperty("gameConfig")]
+    public GameConfig GameConfig { get; set; } = new GameConfig(10, 60);
+
     public static TalkingBotConfig? Read(string filename) {
         string rawJson;
 

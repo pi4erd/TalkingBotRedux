@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using TalkingBot.Core;
 using TalkingBot.Core.Caching;
 using TalkingBot.Services;
 

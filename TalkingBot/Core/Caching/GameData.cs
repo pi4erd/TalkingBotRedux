@@ -5,7 +5,6 @@ namespace TalkingBot.Core.Caching;
 
 public class UserGameData {
     public const ulong ExpRequirement = 500; // linear for now
-    public const ulong ExpGainPerMessage = 30;
 
     [JsonProperty("money")]
     public ulong Money { get; set; }

@@ -1,5 +1,6 @@
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
+using TalkingBot.Core;
 using TalkingBot.Core.Caching;
 using TalkingBot.Services;
 
@@ -9,15 +10,18 @@ public class MessageEventListener : IDisposable {
     private readonly DiscordShardedClient _client;
     private readonly GameDataCacher _cacher;
     private readonly ILogger<MessageEventListener> _logger;
+    private readonly TalkingBotConfig _config;
 
     public MessageEventListener(
         DiscordShardedClient client,
         GameDataCacher cacher,
-        ILogger<MessageEventListener> logger
+        ILogger<MessageEventListener> logger,
+        TalkingBotConfig config
     ) {
         _client = client;
         _cacher = cacher;
         _logger = logger;
+        _config = config;
 
         _client.MessageReceived += OnMessage;
     }
@@ -31,18 +35,18 @@ public class MessageEventListener : IDisposable {
         // Experience on messages
         UserGameData gameData = _cacher.GetUserGameData(message.Author.Id);
 
-        double minutes_elapsed = (DateTime.Now - gameData.LastExpGain).TotalMinutes;
+        double secondsElapsed = (DateTime.Now - gameData.LastExpGain).TotalSeconds;
 
         _logger.LogDebug("User {} sent message.", message.Author.Username);
 
-        if(minutes_elapsed < 1.0) {
+        if(secondsElapsed < _config.GameConfig.ExpGainDelaySeconds) {
             return; // skip this level gain
         }
 
-        gameData.Experience += UserGameData.ExpGainPerMessage;
+        gameData.Experience += _config.GameConfig.ExpGain;
         gameData.LastExpGain = DateTime.Now;
 
-        _logger.LogDebug("User {} gained {} experience.", message.Author.Username, UserGameData.ExpGainPerMessage);
+        _logger.LogDebug("User {} gained {} experience.", message.Author.Username, _config.GameConfig.ExpGain);
         
         if(gameData.UpdateLevel()) {
             await message.Channel.SendMessageAsync($"{message.Author.Mention} leveled up to **{gameData.Level}**!");
