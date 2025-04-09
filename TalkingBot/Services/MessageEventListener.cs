@@ -51,6 +51,8 @@ public class MessageEventListener : IDisposable {
         if(gameData.UpdateLevel()) {
             await message.Channel.SendMessageAsync($"{message.Author.Mention} leveled up to **{gameData.Level}**!");
         }
+
+        _cacher.ModifyUserData(message.Author.Id, gameData);
     }
 
     public void Dispose()
