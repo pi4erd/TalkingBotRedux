@@ -50,11 +50,14 @@ if (botConfig is null)
 }
 
 builder.Services.AddSingleton(botConfig);
-builder.Services.AddSingleton(new DiscordSocketConfig() {
+builder.Services.AddSingleton(new DiscordSocketConfig()
+{
     GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMessages,
     TotalShards = botConfig.Guilds.Length, // 1 shard per guild
+    MessageCacheSize = 100,
 });
 builder.Services.AddSingleton<DiscordShardedClient>();
+builder.Services.AddSingleton<LlamaApi>();
 builder.Services.AddSingleton<InteractionService>();
 builder.Services.AddSingleton<Cache<RoleMessageCache[]>>();
 builder.Services.AddSingleton<Cache<Dictionary<ulong, UserGameData>>>();

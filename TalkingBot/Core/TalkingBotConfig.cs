@@ -33,13 +33,19 @@ public class TalkingBotConfig(
     [JsonProperty("gameConfig")]
     public GameConfig GameConfig { get; set; } = new GameConfig(10, 60);
 
-    public static TalkingBotConfig? Read(string filename) {
+    [JsonProperty("ollamaHost")]
+    public string OllamaHost { get; set; } = "http://localhost:11434";
+
+    public static TalkingBotConfig? Read(string filename)
+    {
         string rawJson;
 
         try
         {
             rawJson = File.ReadAllText(filename);
-        } catch(FileNotFoundException) {
+        }
+        catch (FileNotFoundException)
+        {
             return null;
         }
 
