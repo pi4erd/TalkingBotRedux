@@ -32,6 +32,21 @@ public class MessageEventListener : IDisposable {
             return;
         }
 
+        await ProcessExperience(message);
+
+        if(message.MentionedUsers.Where((user) => user.Id == _client.CurrentUser.Id).FirstOrDefault() != null) {
+            await OnMentionOrReply(message);
+        }
+    }
+
+    async Task OnMentionOrReply(SocketMessage message) {
+        await message.Channel.SendMessageAsync(
+            "I hope you're doing well.",
+            messageReference: message.Reference
+        );
+    }
+
+    async Task ProcessExperience(SocketMessage message) {
         // Experience on messages
         UserGameData gameData = _cacher.GetUserGameData(message.Author.Id);
 
