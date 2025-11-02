@@ -3,15 +3,15 @@
   <PropertyGroup>
     <PublishSingleFile>true</PublishSingleFile>
     <OutputType>Exe</OutputType>
-    <Version>0.2.0.0</Version>
+    <Version>0.2.0.1</Version>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="3.17.1" />
-    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.25" />
+    <PackageReference Include="Discord.Net" Version="3.18.0" />
+    <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.27" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
