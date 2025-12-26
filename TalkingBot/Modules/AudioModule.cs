@@ -191,15 +191,17 @@ public class AudioModule(
             .WithThumbnailUrl(track.ArtworkUri?.OriginalString);
         
         uint count = 0;
-        LavalinkTrack[] queue;
+        LavalinkTrack?[] queue;
         try { // FIXME: Workaround for #1
             queue = [.. player.Queue.Select((queueItem) => queueItem.Track)];
 
             foreach(var queuedTrack in queue) {
+                if(queuedTrack is null) continue;
+
                 count++; // 1-based indexing (oof)
 
                 if(count > 13) {
-                    embedBuilder = embedBuilder.AddField("And more...", "");
+                    embedBuilder = embedBuilder.AddField("...", "And more...");
                     break;
                 }
 
@@ -211,10 +213,9 @@ public class AudioModule(
             }
 
             await FollowupAsync(embeds: [embedBuilder.Build()]).ConfigureAwait(false);
-        } catch(Exception) {
-            logger.LogWarning("Too big queue encountered!");
-            await FollowupAsync($"Queue too big to display ({player.Queue.Count}). " + 
-                "Refer to [#1](https://github.com/pi4erd/TalkingBotRedux/issues/1)");
+        } catch(Exception ex) {
+            logger.LogWarning("Error occured while getting queue: "+ ex);
+            await FollowupAsync($"Failed to display queue!", ephemeral: true);
             return;
         }
     }
